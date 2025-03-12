@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EngineStatsClient"
         mc:Ignorable="d"
-        Title="EngineStats" Height="25" Width="200"
+        Title="EngineStats" Height="25" Width="300"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -14,7 +14,10 @@
     
     <Grid>
         <Border Background="#80000000" CornerRadius="5">
-            <TextBlock x:Name ="PerformanceText" Text="EngineStats | CPU: --% | GPU: --% | RAM: --GB" Foreground="White" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock x:Name ="PerformanceText" 
+                       Text="EngineStats | CPU: --% | GPU: --% | RAM: --GB" 
+                       Foreground="White" FontSize="12" 
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
     </Grid>
 </Window>

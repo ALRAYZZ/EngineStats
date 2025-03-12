@@ -21,6 +21,8 @@ namespace EngineStatsClient
 
 		private Computer _computer;
 		private DispatcherTimer _timer;
+		private float[] cpuHistory = new float[3];
+		private int cpuIndex = 0;
 
 		public MainWindow()
         {
@@ -47,7 +49,7 @@ namespace EngineStatsClient
 				{
 					Interval = TimeSpan.FromSeconds(1)
 				};
-				_timer.Tick += (s, args) => UpdatePerformanceData();
+				_timer.Tick += (s, args) => UpdatePerformanceData(); // Update performance data every second. Lambda expression
 				_timer.Start();
 			}
 			catch (Exception ex)
@@ -74,6 +76,9 @@ namespace EngineStatsClient
 							if (sensor.SensorType == SensorType.Load && sensor.Name.Contains("CPU Total"))
 							{
 								cpuUsage = sensor.Value ?? 0;
+								cpuHistory[cpuIndex % 3] = cpuUsage; // Store the last 3 CPU usages
+								cpuIndex++;
+								cpuUsage = cpuHistory.Take(Math.Min(cpuIndex, 3)).Average(); // Calculate the average of the last 3 CPU usages
 							}
 						}
 					}
@@ -91,14 +96,14 @@ namespace EngineStatsClient
 					{
 						foreach (var sensor in hardware.Sensors)
 						{
-							if (sensor.SensorType == SensorType.Data && sensor.Name == "Used Memory")
+							if (sensor.SensorType == SensorType.Data && (sensor.Name == "Used Memory" || sensor.Name.Contains("Memory Used")))
 							{
-								cpuUsage = sensor.Value ?? 0;
+								ramUsage = sensor.Value ?? 0;
 							}
 						}
 					}
 				}
-				PerformanceText.Text = $"CPU: {cpuUsage}%\nGPU: {gpuUsage}%\nRAM: {ramUsage}%";
+				PerformanceText.Text = $"CPU: {cpuUsage:F1}% | GPU: {gpuUsage:F1}% | RAM: {ramUsage:F1}GB";
 			}
 			catch (Exception ex)
 			{
