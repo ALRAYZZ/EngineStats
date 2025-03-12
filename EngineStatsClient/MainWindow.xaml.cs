@@ -3,6 +3,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using LibreHardwareMonitor.Hardware;
+using SystemWindowsForms = System.Windows.Forms;
+using SystemDrawing = System.Drawing;
+using System.Configuration;
+using System.ComponentModel;
 
 namespace EngineStatsClient
 {
@@ -25,14 +29,28 @@ namespace EngineStatsClient
 		private float[] cpuHistory = new float[3];
 		private int cpuIndex = 0;
 		private bool isDragging = false;
-		private Point startPoint;
+		private System.Windows.Point startPoint;
+		private NotifyIcon trayIcon;
 
 		public MainWindow()
         {
             InitializeComponent();
-            Left = 0;
-            Top =  0;
+            Left = Properties.Settings.Default.WindowLeft;
+            Top =  Properties.Settings.Default.WindowTop;
 			Loaded += MainWindow_Loaded; // This is done to avoid XAML crashing before the window is loaded so we can catch the exception
+
+			trayIcon = new NotifyIcon()
+			{
+				Icon = SystemIcons.Application,
+				Visible = true,
+				Text = "Engine Stats"
+			};
+			trayIcon.DoubleClick += TrayIcon_DoubleClick;
+
+			ContextMenuStrip menu = new ContextMenuStrip();
+			menu.Items.Add("Exit", null, (s, e) => CloseApp());
+			trayIcon.ContextMenuStrip = menu;
+
 		}
 		private void MainWindow_Loaded(object sender, RoutedEventArgs e)
 		{
@@ -57,7 +75,7 @@ namespace EngineStatsClient
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show($"Error: {ex.Message}");
+				System.Windows.MessageBox.Show($"Error: {ex.Message}");
 			}
 		}
 		private void UpdatePerformanceData()
@@ -125,7 +143,7 @@ namespace EngineStatsClient
 		{
 			if (isDragging)
 			{
-				Point currentPoint = e.GetPosition(this);
+				System.Windows.Point currentPoint = e.GetPosition(this);
 				double deltaX = currentPoint.X - startPoint.X;
 				double deltaY = currentPoint.Y - startPoint.Y;
 				Left += deltaX;
@@ -141,6 +159,25 @@ namespace EngineStatsClient
 			Properties.Settings.Default.WindowLeft = Left;
 			Properties.Settings.Default.WindowTop = Top;
 			Properties.Settings.Default.Save();
+		}
+		protected override void OnClosing(CancelEventArgs e)
+		{
+			e.Cancel = true;
+			WindowState = WindowState.Minimized;
+			Visibility = Visibility.Hidden;
+			base.OnClosing(e);
+		}
+		private void TrayIcon_DoubleClick(object sender, EventArgs e)
+		{
+			Visibility = Visibility.Visible;
+			WindowState = WindowState.Normal;
+		}
+		private void CloseApp()
+		{
+			_computer?.Close();
+			trayIcon.Visible = false;
+			trayIcon.Dispose();
+			System.Windows.Application.Current.Shutdown();
 		}
 	}
 
