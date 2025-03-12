@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using LibreHardwareMonitor.Hardware;
 
@@ -23,12 +24,14 @@ namespace EngineStatsClient
 		private DispatcherTimer _timer;
 		private float[] cpuHistory = new float[3];
 		private int cpuIndex = 0;
+		private bool isDragging = false;
+		private Point startPoint;
 
 		public MainWindow()
         {
             InitializeComponent();
-            this.Left = 0;
-            this.Top =  0;
+            Left = 0;
+            Top =  0;
 			Loaded += MainWindow_Loaded; // This is done to avoid XAML crashing before the window is loaded so we can catch the exception
 		}
 		private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -109,6 +112,35 @@ namespace EngineStatsClient
 			{
 				PerformanceText.Text = $"Error: {ex.Message}";
 			}
+		}
+
+		// Mouse drag events
+		private void Border_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+		{
+			isDragging = true;
+			startPoint = e.GetPosition(this);
+			((Border)sender).CaptureMouse();
+		}
+		private void Border_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+		{
+			if (isDragging)
+			{
+				Point currentPoint = e.GetPosition(this);
+				double deltaX = currentPoint.X - startPoint.X;
+				double deltaY = currentPoint.Y - startPoint.Y;
+				Left += deltaX;
+				Top += deltaY;
+			}
+		}
+		private void Border_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+		{
+			isDragging = false;
+			((Border)sender).ReleaseMouseCapture();
+
+			// Save the new position when dragging stops
+			Properties.Settings.Default.WindowLeft = Left;
+			Properties.Settings.Default.WindowTop = Top;
+			Properties.Settings.Default.Save();
 		}
 	}
 
