@@ -31,31 +31,49 @@ namespace EngineStatsClient
 		private bool isDragging = false;
 		private System.Windows.Point startPoint;
 		private NotifyIcon trayIcon;
+		private ToolStripMenuItem showHideMenuItem;
 
 		public MainWindow()
         {
             InitializeComponent();
             Left = Properties.Settings.Default.WindowLeft;
             Top =  Properties.Settings.Default.WindowTop;
-			Loaded += MainWindow_Loaded; // This is done to avoid XAML crashing before the window is loaded so we can catch the exception
+			Loaded += MainWindow_Loaded; // This fires when the window is loaded
+			Deactivated += Window_Deactivated; // Deactivated fires when the window loses focus
 
 			trayIcon = new NotifyIcon()
 			{
-				Icon = SystemIcons.Application,
+				Icon = new SystemDrawing.Icon("EngineStatsIcon.ico"),
 				Visible = true,
 				Text = "Engine Stats"
 			};
 			trayIcon.DoubleClick += TrayIcon_DoubleClick;
 
 			ContextMenuStrip menu = new ContextMenuStrip();
+			showHideMenuItem = new ToolStripMenuItem("Hide", null, ToggleShowHide); // We do it this way to have a reference so we can change the text
+			menu.Items.Add(showHideMenuItem);
 			menu.Items.Add("Exit", null, (s, e) => CloseApp());
 			trayIcon.ContextMenuStrip = menu;
 
+		}
+		private void Window_Deactivated(object sender, EventArgs e)
+		{
+			// Force back to topmost and visible when focus is lost
+			Topmost = false; // Briefly reset
+			Topmost = true; // Then set it back
+			Visibility = Visibility.Visible;
+			Activate();
 		}
 		private void MainWindow_Loaded(object sender, RoutedEventArgs e)
 		{
 			try
 			{
+				if (!IsAdministrator())
+				{
+					System.Windows.MessageBox.Show("Please run this application as an administrator for full hardware access.", 
+						"Warning",
+						MessageBoxButton.OK, MessageBoxImage.Warning);
+				}
 				// Setup LibreHardwareMonitor
 				_computer = new Computer()
 				{
@@ -78,13 +96,21 @@ namespace EngineStatsClient
 				System.Windows.MessageBox.Show($"Error: {ex.Message}");
 			}
 		}
+		private bool IsAdministrator()
+		{
+			using (var identity = System.Security.Principal.WindowsIdentity.GetCurrent())
+			{
+				var principal = new System.Security.Principal.WindowsPrincipal(identity);
+				return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+			}
+		}
 		private void UpdatePerformanceData()
 		{
 			try
 			{
 				_computer.Accept(new UpdateVisitor());
 
-				float cpuUsage = 0, gpuUsage = 0, ramUsage = 0;
+				float cpuUsage = 0, gpuUsage = float.NaN, ramUsage = 0;
 
 				foreach (var hardware in _computer.Hardware)
 				{
@@ -124,6 +150,9 @@ namespace EngineStatsClient
 						}
 					}
 				}
+				cpuUsage = (float)Math.Round(cpuUsage, 1);
+				gpuUsage = float.IsNaN(gpuUsage) ? gpuUsage : (float)Math.Round(gpuUsage, 1);
+				ramUsage = (float)Math.Round(ramUsage, 1);
 				PerformanceText.Text = $"CPU: {cpuUsage:F1}% | GPU: {gpuUsage:F1}% | RAM: {ramUsage:F1}GB";
 			}
 			catch (Exception ex)
@@ -160,17 +189,27 @@ namespace EngineStatsClient
 			Properties.Settings.Default.WindowTop = Top;
 			Properties.Settings.Default.Save();
 		}
-		protected override void OnClosing(CancelEventArgs e)
-		{
-			e.Cancel = true;
-			WindowState = WindowState.Minimized;
-			Visibility = Visibility.Hidden;
-			base.OnClosing(e);
-		}
+
 		private void TrayIcon_DoubleClick(object sender, EventArgs e)
 		{
-			Visibility = Visibility.Visible;
-			WindowState = WindowState.Normal;
+			if (Visibility == Visibility.Hidden)
+			{
+				Visibility = Visibility.Visible; 
+				showHideMenuItem.Text = "Hide";
+			}
+		}
+		private void ToggleShowHide(object sender, EventArgs e)
+		{
+			if (Visibility == Visibility.Visible)
+			{
+				Visibility = Visibility.Hidden;
+				showHideMenuItem.Text = "Show";
+			}
+			else
+			{
+				Visibility = Visibility.Visible;
+				showHideMenuItem.Text = "Hide";
+			}
 		}
 		private void CloseApp()
 		{
